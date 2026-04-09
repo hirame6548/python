@@ -1,0 +1,31 @@
+S = input() # abrakadabra
+T = input() # aba
+
+# dp[k]: Tの先頭からk文字目(0-indexed)までを部分列として構成できる、最大の開始インデックス
+# まだ構成できない場合は -1
+dp = [-1] * len(T)
+print(dp)
+
+ans = 0
+
+for i, c in enumerate(S):
+    print("A", "i=",i, "c=",c)
+    # 同じ文字で連鎖的に更新されるのを防ぐため、後ろから更新する
+    for k in range(len(T) - 1, 0, -1):
+        print("AB", "c=",c, "k=",k)
+        if c == T[k]:
+            print("dp=",dp, "dp[k]=",dp[k], "dp[k-1]=",dp[k-1])
+            dp[k] = max(dp[k], dp[k-1])
+            print("B", "dp=",dp, "c=",c, "k=",k)
+            
+    # 先頭の文字の処理
+    if c == T[0]:
+        print("C", "dp[0]=",dp[0], "T[0]=",T[0], "i=",i)
+        dp[0] = i
+        
+    # 右端を i と固定したとき、部分文字列は (i + 1) 個作れる。
+    # そのうち、Tを部分列として含むものは、左端が 0 から dp[-1] までの (dp[-1] + 1) 個。
+    # したがって、Tを含まないものは全体からこれを引いた i - dp[-1] 個となる。
+    ans += i - dp[-1]
+
+print(ans)
