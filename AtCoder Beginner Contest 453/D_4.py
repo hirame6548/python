@@ -1,12 +1,12 @@
 from collections import deque
-
+import sys
 
 def main():
     H, W = map(int, input().split())
 
     Ss = []
     for _ in range(H):
-        Ss.append(input())
+        Ss.append(sys.stdin.readline().rstrip("\n"))
 
     Ss.insert(0, "#" * W)
     Ss.append("#" * W)
