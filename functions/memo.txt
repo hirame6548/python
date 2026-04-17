@@ -1,0 +1,115 @@
+
+
+辞書にない key を選んでも、0 を返してくれる
+
+from collections import defaultdict
+
+# デフォルト値 0 を返す辞書を使用
+window_counts = defaultdict(int)
+
+
+
+
+
+________________________________________________________________
+
+
+
+
+ON / OFF の二択を N 回繰り返す今回のようなケースの場合、bit による管理をすべき
+ビット演算子 <<, >> は２進数で桁を一つずらす操作。
+
+# 意識すべき実装
+if (i >> j) & 1:  # 整数 i の j ビット目が 1 かどうか
+
+
+
+items = ["A", "B", "C"]
+n = len(items)
+
+# 0 から 2^n - 1 までループ
+for i in range(1 << n):
+    subset = []
+    for j in range(n):
+        # i の j ビット目が1かどうかを判定
+        if (i >> j) & 1:  
+            subset.append(items[j])
+
+            
+
+import itertools
+
+items = ["A", "B", "C"]
+n = len(items)
+
+# (0, 0, 0) から (1, 1, 1) までの直積（全組み合わせ）を生成
+for bits in itertools.product([0, 1], repeat=n):
+    # bitが1であるインデックスの要素を内包表記で抽出
+    subset = [items[j] for j in range(n) if bits[j] == 1]
+    
+    # 動作確認用の出力
+    print(f"{bits}: {subset}")
+
+
+
+
+________________________________________________________________
+
+
+
+
+全順列探索  N = 10 程度まで
+
+
+import itertools
+
+items = ["A", "B", "C"]
+
+# itemsの要素の全並び替え（順列）を列挙
+for p in itertools.permutations(items):
+    print(p) 
+    # 出力はタプル: ('A', 'B', 'C'), ('A', 'C', 'B'), ...
+
+
+Combinationもある
+
+print(list(itertools.combinations([1, 2, 3], 2)))
+# -> [(1, 2), (1, 3), (2, 3)]
+
+重複を許す場合も
+print(list(itertools.combinations_with_replacement([1, 2, 3], 2)))
+# -> [(1, 1), (1, 2), (1, 3), (2, 2), (2, 3), (3, 3)]
+
+
+
+________________________________________________________________
+
+
+itertools
+
+https://qiita.com/anmint/items/37ca0ded5e1d360b51f3
+
+https://docs.python.org/ja/3/library/itertools.html
+
+
+累積和
+ary = [1, 3, 4, 5, 9]
+cumsum = itertools.accumulate(ary)
+
+>> [1, 4, 8, 13, 22]
+(イテレータなのでlist化したいならlist())
+
+
+連続する要素を区切って返すイテレータ
+bi = [0,0,0,1,1,0,0,0,1,1,0,1]
+
+gr = itertools.groupby(bi)
+for key, group in gr:
+    print(f'{key}: {list(group)}')
+
+# 0: [0, 0, 0]
+# 1: [1, 1]
+# 0: [0, 0, 0]
+# 1: [1, 1]
+# 0: [0]
+# 1: [1]
