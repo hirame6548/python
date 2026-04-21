@@ -1,6 +1,6 @@
 import pytest
 import io
-from main import main
+from E.main import main
 
 @pytest.mark.parametrize("input_data, expected_output", [
     (
