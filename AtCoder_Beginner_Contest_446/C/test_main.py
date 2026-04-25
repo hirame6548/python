@@ -5,10 +5,23 @@ from C.main import main
 @pytest.mark.parametrize("input_data, expected_output", [
     (
         # 入力
-        """""",
+        """3
+3 1
+7 2 3
+1 3 2
+3 2
+7 2 3
+1 3 2
+2 1
+2 1
+1 2
+""",
         
         # 期待される出力
-        """"""
+        """3
+5
+0
+"""
     ),
 
 
