@@ -5,30 +5,39 @@ from E.main import main
 @pytest.mark.parametrize("input_data, expected_output", [
     (
         # 入力
-        """""",
+        """10
+ACBBCABCAB
+""",
         
         # 期待される出力
-        """"""
+        """8
+"""
     ),
 
 
 
     (
         # 入力
-        """""",
+        """4
+CCBC
+""",
 
         # 期待される出力
-        """"""
+        """0
+"""
     ),
 
 
 
     (
         # 入力
-        """""",
+        """36
+CABACBBBBBAABABACCBCABCCABAABABBCBAC
+""",
 
         # 期待される出力
-        """"""
+        """136
+"""
     ),
 
 
