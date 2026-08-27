@@ -24,3 +24,15 @@ A/test/custom-boundary.out
 ```
 
 `pytest` を実行すると、公式サンプルと自作テストの両方が自動的に検出されます。
+
+## 手動デバッグ
+
+各問題の `input.txt` は、途中の `print()` などを確認するためのスクラッチ入力です。
+`download_samples.py` を実行すると、各問題の入力例1が自動的に入ります。
+
+```sh
+python A/main.py < A/input.txt
+```
+
+`input.txt` はGitの管理対象外なので、その後は自由に書き換えられます。
+再度 `download_samples.py` を実行すると、入力例1の内容に戻ります。
