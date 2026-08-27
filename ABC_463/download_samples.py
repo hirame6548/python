@@ -41,18 +41,27 @@ def main() -> int:
         test_dir = task_dir / "test"
         if any(test_dir.glob("sample-*.in")):
             print(f"[skip] {label}: 公式サンプルを取得済みです")
+        else:
+            problem_id = f"{contest_id}_{label.lower()}"
+            url = f"https://atcoder.jp/contests/{contest_id}/tasks/{problem_id}"
+            print(f"[download] {label}: {url}")
+
+            result = subprocess.run(
+                [oj, "download", url, "--directory", "test"],
+                cwd=task_dir,
+            )
+            if result.returncode != 0:
+                failed.append(label)
+                continue
+
+        sample_inputs = sorted(test_dir.glob("sample-*.in"))
+        if not sample_inputs:
+            print(f"[error] {label}: 入力例が見つかりません")
+            failed.append(label)
             continue
 
-        problem_id = f"{contest_id}_{label.lower()}"
-        url = f"https://atcoder.jp/contests/{contest_id}/tasks/{problem_id}"
-        print(f"[download] {label}: {url}")
-
-        result = subprocess.run(
-            [oj, "download", url, "--directory", "test"],
-            cwd=task_dir,
-        )
-        if result.returncode != 0:
-            failed.append(label)
+        shutil.copyfile(sample_inputs[0], task_dir / "input.txt")
+        print(f"[copy] {label}: {sample_inputs[0].name} → input.txt")
 
     if failed:
         print(f"取得に失敗しました: {', '.join(failed)}")
