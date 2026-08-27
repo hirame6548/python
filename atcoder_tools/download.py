@@ -3,11 +3,16 @@ import json
 import re
 import shutil
 import subprocess
+from collections.abc import Iterator
 from pathlib import Path
 from urllib.parse import urljoin
 
+import browser_cookie3
 import requests
 from bs4 import BeautifulSoup, NavigableString, Tag
+
+
+USER_AGENT = "atcoder-template/1.0"
 
 
 def preformatted_math_to_markdown(pre: Tag) -> str:
@@ -108,10 +113,13 @@ def statement_to_markdown(html: str, url: str) -> str:
     return f"# 問題文\n\n出典: {url}\n\n{body}\n"
 
 
-def download_statement(url: str, destination: Path) -> None:
-    response = requests.get(
+def download_statement(
+    url: str,
+    destination: Path,
+    session: requests.Session,
+) -> None:
+    response = session.get(
         url,
-        headers={"User-Agent": "atcoder-template/1.0"},
         timeout=30,
     )
     response.raise_for_status()
@@ -185,22 +193,51 @@ def parse_tasks(html: str, contest_id: str) -> dict[str, str]:
     return tasks
 
 
-def discover_tasks(contest_id: str) -> dict[str, str]:
-    """タスク一覧から表示ラベルと実際の問題URLを取得する。"""
+def browser_sessions() -> Iterator[tuple[str, requests.Session]]:
+    """Vivaldi、Chrome、未ログインの順にAtCoder用セッションを作る。"""
+    for browser_name, cookie_loader in (
+        ("Vivaldi", browser_cookie3.vivaldi),
+        ("Chrome", browser_cookie3.chrome),
+    ):
+        try:
+            cookies = cookie_loader(domain_name="atcoder.jp")
+        except Exception as error:
+            print(f"[cookie] {browser_name}: Cookieを読めませんでした: {error}")
+            continue
+
+        session = requests.Session()
+        session.headers.update({"User-Agent": USER_AGENT})
+        session.cookies.update(cookies)
+        yield browser_name, session
+
+    anonymous_session = requests.Session()
+    anonymous_session.headers.update({"User-Agent": USER_AGENT})
+    yield "未ログイン", anonymous_session
+
+
+def discover_tasks(contest_id: str) -> tuple[dict[str, str], requests.Session]:
+    """タスク一覧と、取得に成功した認証セッションを返す。"""
     tasks_url = f"https://atcoder.jp/contests/{contest_id}/tasks"
-    response = requests.get(
-        tasks_url,
-        headers={"User-Agent": "atcoder-template/1.0"},
-        timeout=30,
+    attempts: list[str] = []
+
+    for source, session in browser_sessions():
+        response = session.get(tasks_url, timeout=30)
+        if response.status_code == 404:
+            attempts.append(f"{source}=404")
+            continue
+        response.raise_for_status()
+
+        tasks = parse_tasks(response.text, contest_id)
+        if tasks:
+            print(f"[session] {source}のCookieを使用")
+            return tasks, session
+        attempts.append(f"{source}=問題一覧なし")
+
+    raise ValueError(
+        "問題一覧を取得できませんでした。VivaldiまたはChromeでAtCoderに"
+        "ログインし、このコンテストへ参加登録してから再実行してください。"
+        f"（試行結果: {', '.join(attempts)}）"
     )
-    response.raise_for_status()
-    tasks = parse_tasks(response.text, contest_id)
-    if not tasks:
-        raise ValueError(
-            "問題一覧を取得できませんでした。コンテスト開始前、"
-            "またはコンテストIDが違う可能性があります。"
-        )
-    return tasks
 
 
 def main(contest_root: Path | None = None) -> int:
@@ -241,7 +278,7 @@ def main(contest_root: Path | None = None) -> int:
 
     print(f"[contest] {contest_id}")
     try:
-        tasks = discover_tasks(contest_id)
+        tasks, session = discover_tasks(contest_id)
     except (requests.RequestException, ValueError) as error:
         parser.error(str(error))
 
@@ -281,7 +318,7 @@ def main(contest_root: Path | None = None) -> int:
             print(f"[skip] {label}: 問題文を取得済みです")
         else:
             try:
-                download_statement(url, statement_file)
+                download_statement(url, statement_file, session)
             except (OSError, requests.RequestException, ValueError) as error:
                 print(f"[error] {label}: 問題文を取得できませんでした: {error}")
                 failed.add(label)
