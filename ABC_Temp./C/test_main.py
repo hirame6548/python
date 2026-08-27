@@ -1,63 +1,32 @@
+import subprocess
+import sys
+from pathlib import Path
+
 import pytest
-import io
-from C.main import main
-
-@pytest.mark.parametrize("input_data, expected_output", [
-    (
-        # 入力
-        """""",
-        
-        # 期待される出力
-        """"""
-    ),
 
 
-
-    (
-        # 入力
-        """""",
-
-        # 期待される出力
-        """"""
-    ),
+HERE = Path(__file__).parent
+MAIN_FILE = HERE / "main.py"
+TEST_DIR = HERE / "test"
+INPUT_FILES = sorted(TEST_DIR.glob("*.in"))
 
 
+@pytest.mark.parametrize(
+    "input_file",
+    INPUT_FILES,
+    ids=[path.stem for path in INPUT_FILES],
+)
+def test_case(input_file: Path):
+    expected_file = input_file.with_suffix(".out")
+    assert expected_file.exists(), f"期待値ファイルがありません: {expected_file.name}"
 
-    (
-        # 入力
-        """""",
+    result = subprocess.run(
+        [sys.executable, MAIN_FILE],
+        input=input_file.read_text(),
+        text=True,
+        capture_output=True,
+        timeout=2,
+    )
 
-        # 期待される出力
-        """"""
-    ),
-
-
-
-    (
-        # 入力
-        """""",
-
-        # 期待される出力
-        """"""
-    ),
-
-
-
-    (
-        # 入力
-        """""",
-
-        # 期待される出力
-        """"""
-    ),
-
-
-])
-
-def test_main(monkeypatch, capsys, input_data, expected_output):
-    monkeypatch.setattr('sys.stdin', io.StringIO(input_data))
-    main()
-    captured = capsys.readouterr()
-
-    # 両方の末尾の改行や空白を削ぎ落としてから比較する
-    assert captured.out.strip() == expected_output.strip()
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.rstrip("\n") == expected_file.read_text().rstrip("\n")
