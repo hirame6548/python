@@ -1,21 +1,46 @@
 import argparse
+import re
 import shutil
 import subprocess
 from pathlib import Path
 
 
-ROOT = Path(__file__).parent
+ROOT = Path(__file__).resolve().parent
 
 
 def normalize_contest_id(value: str) -> str:
     return value.lower().replace("_", "").replace("-", "")
 
 
+def infer_contest_id(dirname: str) -> str | None:
+    normalized = normalize_contest_id(dirname)
+
+    short_name = re.search(r"(abc|arc|agc)\d+", normalized)
+    if short_name:
+        return short_name.group()
+
+    long_names = {
+        "atcoderbeginnercontest": "abc",
+        "atcoderregularcontest": "arc",
+        "atcodergrandcontest": "agc",
+    }
+    for prefix, abbreviation in long_names.items():
+        match = re.search(rf"{prefix}(\d+)", normalized)
+        if match:
+            return f"{abbreviation}{match.group(1)}"
+
+    return None
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="AtCoderの公式サンプルを各問題のtest/へ取得します。",
     )
-    parser.add_argument("contest_id", help="例: abc467 または ABC_467")
+    parser.add_argument(
+        "contest_id",
+        nargs="?",
+        help="省略時はフォルダ名から判定。例: abc467 または ABC_467",
+    )
     parser.add_argument(
         "--labels",
         nargs="+",
@@ -28,7 +53,17 @@ def main() -> int:
     if oj is None:
         parser.error("ojが見つかりません。online-judge-toolsをインストールしてください。")
 
-    contest_id = normalize_contest_id(args.contest_id)
+    if args.contest_id:
+        contest_id = normalize_contest_id(args.contest_id)
+    else:
+        contest_id = infer_contest_id(ROOT.name)
+        if contest_id is None:
+            parser.error(
+                f"フォルダ名 {ROOT.name!r} からコンテストIDを判定できません。"
+                "例: python dl.py abc467"
+            )
+
+    print(f"[contest] {contest_id}")
     failed = []
 
     for raw_label in args.labels:
