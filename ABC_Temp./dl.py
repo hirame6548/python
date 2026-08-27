@@ -6,10 +6,32 @@ from pathlib import Path
 from urllib.parse import urljoin
 
 import requests
-from bs4 import BeautifulSoup, NavigableString
+from bs4 import BeautifulSoup, NavigableString, Tag
 
 
 ROOT = Path(__file__).resolve().parent
+
+
+def preformatted_math_to_markdown(pre: Tag) -> str:
+    """入力形式の <pre><var>...</var></pre> を左寄せの数式行にする。"""
+    lines: list[list[str]] = [[]]
+    for child in pre.children:
+        if isinstance(child, Tag):
+            value = child.get_text().strip()
+            if value:
+                lines[-1].append(value)
+            continue
+
+        parts = str(child).split("\n")
+        for index, part in enumerate(parts):
+            value = part.strip()
+            if value:
+                lines[-1].append(r"\text{" + value.replace("}", r"\}") + "}")
+            if index < len(parts) - 1:
+                lines.append([])
+
+    equations = ["$" + r" \quad ".join(line) + "$" for line in lines if line]
+    return "\n" + "<br>\n".join(equations) + "\n"
 
 
 def statement_to_markdown(html: str, url: str) -> str:
@@ -30,8 +52,12 @@ def statement_to_markdown(html: str, url: str) -> str:
             image.replace_with(NavigableString(f"![{alt}]({urljoin(url, src)})"))
 
     for pre in content.find_all("pre"):
-        code = pre.get_text().strip("\n")
-        pre.replace_with(NavigableString(f"\n```text\n{code}\n```\n"))
+        if pre.find("var"):
+            rendered = preformatted_math_to_markdown(pre)
+        else:
+            code = pre.get_text().strip("\n")
+            rendered = f"\n```text\n{code}\n```\n"
+        pre.replace_with(NavigableString(rendered))
 
     # AtCoderは数式を <var>...</var> に入れ、ブラウザ側でMathJax描画する。
     # MarkdownでもLaTeXとして認識できるようインライン数式に変換する。
@@ -39,13 +65,36 @@ def statement_to_markdown(html: str, url: str) -> str:
         tex = math.get_text().strip()
         math.replace_with(NavigableString(f"${tex}$"))
 
+    for table in content.find_all("table"):
+        rows = []
+        for row in table.find_all("tr"):
+            cells = [
+                cell.get_text(" ", strip=True).replace("|", r"\|")
+                for cell in row.find_all(["th", "td"], recursive=False)
+            ]
+            if cells:
+                rows.append(cells)
+        if rows:
+            width = max(map(len, rows))
+            rows = [row + [""] * (width - len(row)) for row in rows]
+            markdown_rows = ["| " + " | ".join(row) + " |" for row in rows]
+            markdown_rows.insert(1, "| " + " | ".join(["---"] * width) + " |")
+            table.replace_with(NavigableString("\n" + "\n".join(markdown_rows) + "\n"))
+
+    for link in content.find_all("a"):
+        label = link.get_text(strip=True)
+        href = link.get("href")
+        if label and href and not href.startswith("#"):
+            link.replace_with(NavigableString(f"[{label}]({urljoin(url, href)})"))
+
     for heading in content.find_all(["h1", "h2", "h3", "h4"]):
         level = max(2, int(heading.name[1]) - 1)
         heading.insert_before(NavigableString(f"\n{'#' * level} "))
         heading.append(NavigableString("\n"))
 
     for item in content.find_all("li"):
-        item.insert_before(NavigableString("\n- "))
+        marker = "1." if item.parent and item.parent.name == "ol" else "-"
+        item.insert_before(NavigableString(f"\n{marker} "))
         item.append(NavigableString("\n"))
 
     for br in content.find_all("br"):
