@@ -33,6 +33,12 @@ def statement_to_markdown(html: str, url: str) -> str:
         code = pre.get_text().strip("\n")
         pre.replace_with(NavigableString(f"\n```text\n{code}\n```\n"))
 
+    # AtCoderは数式を <var>...</var> に入れ、ブラウザ側でMathJax描画する。
+    # MarkdownでもLaTeXとして認識できるようインライン数式に変換する。
+    for math in content.find_all("var"):
+        tex = math.get_text().strip()
+        math.replace_with(NavigableString(f"${tex}$"))
+
     for heading in content.find_all(["h1", "h2", "h3", "h4"]):
         level = max(2, int(heading.name[1]) - 1)
         heading.insert_before(NavigableString(f"\n{'#' * level} "))
@@ -107,6 +113,11 @@ def main() -> int:
         default=list("ABCDEFG"),
         help="取得する問題ラベル（デフォルト: A B C D E F G）",
     )
+    parser.add_argument(
+        "--refresh-statements",
+        action="store_true",
+        help="取得済みのproblem.mdも最新の内容で上書きする",
+    )
     args = parser.parse_args()
 
     oj = shutil.which("oj")
@@ -150,7 +161,7 @@ def main() -> int:
                 continue
 
         statement_file = task_dir / "problem.md"
-        if statement_file.exists():
+        if statement_file.exists() and not args.refresh_statements:
             print(f"[skip] {label}: 問題文を取得済みです")
         else:
             try:
