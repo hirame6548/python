@@ -11,6 +11,11 @@ TEST_DIR = HERE / "test"
 INPUT_FILES = sorted(TEST_DIR.glob("*.in"))
 
 
+def normalize_output(text: str) -> list[str]:
+    """AtCoder の通常ジャッジに合わせ、空白類を区切りとして比較する。"""
+    return text.split()
+
+
 @pytest.mark.parametrize(
     "input_file",
     INPUT_FILES,
@@ -29,4 +34,8 @@ def test_case(input_file: Path):
     )
 
     assert result.returncode == 0, result.stderr
-    assert result.stdout.rstrip("\n") == expected_file.read_text().rstrip("\n")
+    assert result.stderr == "", (
+        "標準エラー出力があります。DEBUG = False にしてから提出してください。\n"
+        f"{result.stderr}"
+    )
+    assert normalize_output(result.stdout) == normalize_output(expected_file.read_text())
